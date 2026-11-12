@@ -8,7 +8,7 @@ No cloud. No API key. No network. Just a model streaming itself off the SSD.
 
 [![Edge0-35B answering three questions on an 8 GB M3](chat-preview.gif)](chat-demo.mp4)
 
-[▶ Watch the full recording](chat-demo.mp4) — 2:03, 1512×982. The preview above
+[▶ Watch the full recording](chat-demo.mp4) — 2:03, 3024×1964. The preview above
 is sped up 6×; the linked file plays in real time.
 
 > 🔒 The **serial number** in the About panel was removed during encoding by
