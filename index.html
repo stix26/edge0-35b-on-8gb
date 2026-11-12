@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Edge0 35B</title>
+<style>
+  :root {
+    --bg: #0d1117; --panel: #161b22; --border: #30363d;
+    --text: #e6edf3; --muted: #8b949e; --accent: #58a6ff;
+    --user: #1f6feb; --assistant: #21262d;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font: 15px/1.55 -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+    display: flex; flex-direction: column;
+  }
+  header {
+    padding: 12px 18px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 10px; background: var(--panel);
+  }
+  header h1 { font-size: 14px; font-weight: 600; margin: 0; letter-spacing: .3px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: #3fb950; }
+  .dot.busy { background: #d29922; }
+  .dot.down { background: #f85149; }
+  #meta { margin-left: auto; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  header button.ghost { height: 28px; padding: 0 11px; font-size: 12px; margin-left: 10px; }
+  header button.ghost:hover { color: var(--text); border-color: var(--muted); }
+  main { flex: 1; overflow-y: auto; padding: 20px; }
+  .msg { max-width: 780px; margin: 0 auto 16px; display: flex; gap: 12px; }
+  .who {
+    flex: 0 0 28px; height: 28px; border-radius: 6px; display: grid; place-items: center;
+    font-size: 11px; font-weight: 700; background: var(--assistant); color: var(--muted);
+  }
+  .msg.user .who { background: var(--user); color: #fff; }
+  .bubble { flex: 1; white-space: pre-wrap; overflow-wrap: anywhere; padding-top: 3px; }
+  .msg.user .bubble { color: #cfe3ff; }
+  .empty { max-width: 780px; margin: 12vh auto; text-align: center; color: var(--muted); }
+  .empty b { color: var(--text); display: block; font-size: 17px; margin-bottom: 8px; }
+  .empty code { background: var(--panel); padding: 2px 6px; border-radius: 4px; font-size: 13px; }
+  footer { border-top: 1px solid var(--border); background: var(--panel); padding: 12px 18px; }
+  .inputrow { max-width: 780px; margin: 0 auto; display: flex; gap: 10px; align-items: flex-end; }
+  textarea {
+    flex: 1; resize: none; min-height: 44px; max-height: 200px;
+    background: var(--bg); color: var(--text); border: 1px solid var(--border);
+    border-radius: 8px; padding: 11px 12px; font: inherit; outline: none;
+  }
+  textarea:focus { border-color: var(--accent); }
+  button {
+    height: 44px; padding: 0 18px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--user); color: #fff; font: inherit; font-weight: 600; cursor: pointer;
+  }
+  button:disabled { opacity: .45; cursor: default; }
+  button.ghost { background: transparent; color: var(--muted); font-weight: 500; padding: 0 12px; }
+  .hint { max-width: 780px; margin: 8px auto 0; font-size: 11.5px; color: var(--muted); }
+</style>
+</head>
+<body>
+<header>
+  <span class="dot" id="dot"></span>
+  <h1>Edge0&nbsp;35B&nbsp;·&nbsp;A3B</h1>
+  <span id="meta">ready</span>
+  <button id="clear" class="ghost" title="Clear this conversation">Clear chat</button>
+</header>
+
+<main id="log">
+  <div class="empty" id="empty">
+    <b>Edge0 chat</b>
+    Local model, streaming from SSD. Type below.<br><br>
+    <code>Enter</code> to send · <code>Shift+Enter</code> for a new line
+  </div>
+</main>
+
+<footer>
+  <div class="inputrow">
+    <textarea id="in" rows="1" placeholder="Ask something…"></textarea>
+    <button id="send">Send</button>
+    <button id="stop" class="ghost" hidden>Stop</button>
+  </div>
+  <div class="hint">Runs at roughly 5–7 tok/s on this machine. Longer answers take a while.</div>
+</footer>
+
+<script>
+const log = document.getElementById('log');
+const input = document.getElementById('in');
+const sendBtn = document.getElementById('send');
+const stopBtn = document.getElementById('stop');
+const meta = document.getElementById('meta');
+const dot = document.getElementById('dot');
+const clearBtn = document.getElementById('clear');
+let emptyEl = document.getElementById('empty');
+const EMPTY_HTML = emptyEl.innerHTML;
+
+const history = [];
+let controller = null;
+let clearing = false;
+
+function el(tag, cls, text) {
+  const n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (text != null) n.textContent = text;
+  return n;
+}
+
+function addMessage(role, text) {
+  if (emptyEl) { emptyEl.remove(); emptyEl = null; }
+  const row = el('div', 'msg ' + role);
+  row.appendChild(el('div', 'who', role === 'user' ? 'YOU' : 'AI'));
+  const bubble = el('div', 'bubble', text);
+  row.appendChild(bubble);
+  log.appendChild(row);
+  log.scrollTop = log.scrollHeight;
+  return bubble;
+}
+
+function setBusy(busy) {
+  dot.className = 'dot' + (busy ? ' busy' : '');
+  sendBtn.disabled = busy;
+  stopBtn.hidden = !busy;
+}
+
+async function send() {
+  if (controller) return;  // a request is already streaming
+  const text = input.value.trim();
+  if (!text) return;
+
+  input.value = '';
+  input.style.height = 'auto';
+  addMessage('user', text);
+  history.push({ role: 'user', content: text });
+
+  const bubble = addMessage('assistant', '');
+  setBusy(true);
+  meta.textContent = 'waiting for first token…';
+
+  controller = new AbortController();
+  const started = performance.now();
+  let chars = 0;
+  let answer = '';
+
+  try {
+    const resp = await fetch('/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      signal: controller.signal,
+      body: JSON.stringify({
+        model: 'edge0_35b',
+        messages: history,
+        max_tokens: 768,
+        stream: true,
+        stream_options: { include_usage: true }
+      })
+    });
+
+    if (!resp.ok) {
+      const err = await resp.text();
+      bubble.textContent = 'Error: ' + err.slice(0, 400);
+      setBusy(false);
+      meta.textContent = 'error';
+      return;
+    }
+
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+
+      const parts = buffer.split('\n\n');
+      buffer = parts.pop();
+
+      for (const part of parts) {
+        for (const line of part.split('\n')) {
+          if (!line.startsWith('data:')) continue;
+          const payload = line.slice(5).trim();
+          if (!payload || payload === '[DONE]') continue;
+          let evt;
+          try { evt = JSON.parse(payload); } catch { continue; }
+
+          const delta = evt.choices?.[0]?.delta?.content;
+          if (delta) {
+            answer += delta;
+            chars += delta.length;
+            bubble.textContent = answer;
+            log.scrollTop = log.scrollHeight;
+            const secs = (performance.now() - started) / 1000;
+            meta.textContent = secs > 0
+              ? `streaming · ~${(chars / 4 / secs).toFixed(1)} tok/s`
+              : 'streaming…';
+          }
+        }
+      }
+    }
+
+    const secs = (performance.now() - started) / 1000;
+    history.push({ role: 'assistant', content: answer });
+    meta.textContent = `${chars} chars · ${secs.toFixed(1)}s`;
+  } catch (err) {
+    if (err.name === 'AbortError') {
+      if (answer && !clearing) history.push({ role: 'assistant', content: answer });
+      if (!clearing) meta.textContent = 'stopped';
+    } else {
+      bubble.textContent = (bubble.textContent || '') + '\n[error: ' + err.message + ']';
+      meta.textContent = 'error';
+    }
+  } finally {
+    setBusy(false);
+    controller = null;
+    clearing = false;
+    input.focus();
+  }
+}
+
+function clearChat() {
+  if (controller) {
+    clearing = true;
+    controller.abort();
+  } else {
+    clearing = false;
+  }
+
+  history.length = 0;
+  log.querySelectorAll('.msg').forEach((n) => n.remove());
+
+  if (!emptyEl) {
+    emptyEl = el('div', 'empty');
+    emptyEl.id = 'empty';
+    emptyEl.innerHTML = EMPTY_HTML;
+    log.appendChild(emptyEl);
+  }
+
+  input.value = '';
+  input.style.height = 'auto';
+  setBusy(false);
+  meta.textContent = 'ready';
+  input.focus();
+}
+
+sendBtn.addEventListener('click', send);
+stopBtn.addEventListener('click', () => controller && controller.abort());
+clearBtn.addEventListener('click', clearChat);
+
+input.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    send();
+  }
+});
+
+input.addEventListener('input', () => {
+  input.style.height = 'auto';
+  input.style.height = Math.min(input.scrollHeight, 200) + 'px';
+});
+
+// Scripted prompts: the server can push a question over /control and the page
+// types it out, then sends it. Used for hands-free demos and recordings.
+function typeAndSend(text) {
+  if (controller) return;
+  input.focus();
+  input.value = '';
+  let i = 0;
+  const step = () => {
+    if (i >= text.length) { send(); return; }
+    input.value += text[i++];
+    input.style.height = 'auto';
+    input.style.height = Math.min(input.scrollHeight, 200) + 'px';
+    setTimeout(step, 16);
+  };
+  step();
+}
+
+if (window.EventSource) {
+  const controlSource = new EventSource('/control');
+  controlSource.onmessage = (evt) => {
+    try {
+      const msg = JSON.parse(evt.data);
+      if (msg && typeof msg.prompt === 'string') typeAndSend(msg.prompt);
+    } catch { /* ignore malformed */ }
+  };
+}
+
+fetch('/health').then(r => {
+  dot.className = 'dot' + (r.ok ? '' : ' down');
+  meta.textContent = r.ok ? 'ready' : 'engine down';
+}).catch(() => {
+  dot.className = 'dot down';
+  meta.textContent = 'engine down';
+});
+
+input.focus();
+</script>
+</body>
+</html>
