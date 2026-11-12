@@ -406,6 +406,7 @@ build/mac-metal/bin/edge0-infer run \
 | `index.html` | chat UI — streaming, live tok/s, stop + clear buttons |
 | `server.py` | same-origin proxy (page ⇄ engine) |
 | `chat-demo.mp4` | the demo recording |
+| `chat-preview.gif` | inline preview, sped up 6× |
 
 Elsewhere:
 
@@ -419,19 +420,15 @@ Elsewhere:
 
 ## 🎬 Video
 
-Recorded on this machine, unedited apart from the redaction below.
+[![Edge0-35B answering three questions on an 8 GB M3](chat-preview.gif)](chat-demo.mp4)
 
-<video src="chat-demo.mp4" controls width="100%"></video>
-
-▶️ [`chat-demo.mp4`](chat-demo.mp4) — 2:03, 1512×982, 1.4 MB
+[▶ Watch the full recording](chat-demo.mp4) — 2:03, 1512×982. The preview above
+is sped up 6×; the linked file plays in real time.
 
 > 🔒 The **serial number** in the About panel was removed during encoding by
 > filling that row with the panel's own background — nothing is drawn over the
 > video. The chip and memory lines were left intact on purpose: they're the
 > point of the demo.
->
-> GitHub's Markdown sanitizer drops `<video>` tags; the direct link above always
-> works, and the tag renders in local previews.
 
 ---
 
