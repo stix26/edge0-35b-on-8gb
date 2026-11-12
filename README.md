@@ -6,8 +6,15 @@ A **35-billion-parameter** sparse MoE model, answering questions on a base
 
 No cloud. No API key. No network. Just a model streaming itself off the SSD.
 
-> 🎬 **Watch it run:** [`chat-demo.mp4`](chat-demo.mp4) — a real session on this
-> machine, 2 minutes.
+[![Edge0-35B answering three questions on an 8 GB M3](chat-preview.gif)](chat-demo.mp4)
+
+[▶ Watch the full recording](chat-demo.mp4) — 2:03, 1512×982. The preview above
+is sped up 6×; the linked file plays in real time.
+
+> 🔒 The **serial number** in the About panel was removed during encoding by
+> filling that row with the panel's own background — nothing is drawn over the
+> video. The chip and memory lines were left intact on purpose: they're the
+> point of the demo.
 
 ---
 
@@ -415,20 +422,6 @@ Elsewhere:
 | `~/edge0` | 504 MB | repo + `mac-metal` build |
 | `~/models/edge0-35b-assets` | 20 GB | converted assets — all the engine needs |
 | `~/edge0-serve.log` | — | engine log |
-
----
-
-## 🎬 Video
-
-[![Edge0-35B answering three questions on an 8 GB M3](chat-preview.gif)](chat-demo.mp4)
-
-[▶ Watch the full recording](chat-demo.mp4) — 2:03, 1512×982. The preview above
-is sped up 6×; the linked file plays in real time.
-
-> 🔒 The **serial number** in the About panel was removed during encoding by
-> filling that row with the panel's own background — nothing is drawn over the
-> video. The chip and memory lines were left intact on purpose: they're the
-> point of the demo.
 
 ---
 
