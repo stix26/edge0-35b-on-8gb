@@ -414,6 +414,8 @@ build/mac-metal/bin/edge0-infer run \
 | `server.py` | same-origin proxy (page ⇄ engine) |
 | `chat-demo.mp4` | the demo recording |
 | `chat-preview.gif` | inline preview, sped up 6× |
+| `LICENSE` | MIT, covering the scripts and docs |
+| `.gitignore` | blocks logs, env files, and model weights |
 
 Elsewhere:
 
@@ -422,6 +424,40 @@ Elsewhere:
 | `~/edge0` | 504 MB | repo + `mac-metal` build |
 | `~/models/edge0-35b-assets` | 20 GB | converted assets — all the engine needs |
 | `~/edge0-serve.log` | — | engine log |
+
+---
+
+## 🔐 Security & privacy
+
+- **Nothing leaves the machine.** The engine binds `127.0.0.1:8000`, the chat
+  proxy `127.0.0.1:8080`. Loopback only — not reachable from the LAN or the
+  internet.
+- **No accounts, no API keys, no telemetry.** Prompts and replies are never
+  transmitted. There is no analytics call anywhere in the pipeline.
+- **No credentials in this repository.** It holds source and a recording only.
+  `.gitignore` blocks `.env`, logs, and any `*.gguf` / `*.safetensors` weights
+  so they can't be committed by accident.
+- **Model files stay outside the repo.** The 20 GB of assets live in
+  `~/models/edge0-35b-assets`; only the scripts and the demo video are tracked.
+- **Small enough to audit.** `server.py` is 166 lines and forwards exactly one
+  endpoint (`/v1/chat/completions`) to the engine. `index.html` is a single
+  file with no external scripts, fonts, or CDN references.
+- **No conversation text is logged.** The engine writes timings and memory
+  figures to `~/edge0-serve.log`; the proxy logs nothing at all.
+
+## ⚠️ Disclaimer
+
+This project is provided for educational and informational purposes only. It
+documents one person's setup on one machine — it is not a support contract, a
+hardware recommendation, or a claim that every model behaves the same way.
+
+Benchmark figures here are single-machine measurements and will vary with
+prompt, context length, thermal state, and background load. Model output can be
+wrong, biased, or unsafe; verify anything you intend to rely on.
+
+Not affiliated with Edge0, Qwen, Alibaba, or Apple. Use at your own risk. The
+author assumes no responsibility or liability for any errors, omissions, or
+outcomes resulting from use of this guide or these scripts.
 
 ---
 

@@ -1,2 +1,27 @@
-server.log
+# --- OS ---
 .DS_Store
+Thumbs.db
+*.swp
+*~
+
+# --- logs and runtime state ---
+*.log
+server.log
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# --- local config and secrets ---
+.env
+.env.*
+!.env.example
+
+# --- model weights: never commit these ---
+*.gguf
+*.safetensors
+*.pt
+*.bin
+*.npz
